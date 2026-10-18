@@ -1,13 +1,13 @@
 name: Transfer Release Assets to Hugging Face
 
 on:
-  workflow_dispatch: # Allows manual trigger from the GitHub web UI
+  workflow_dispatch:
 
 jobs:
   transfer:
     runs-on: ubuntu-latest
     permissions:
-      contents: read # Permission to read your releases
+      contents: read
 
     steps:
       - name: Set up Python
@@ -15,21 +15,34 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Hugging Face CLI
+      - name: Install Hugging Face Hub Library
         run: |
-          pip install --upgrade huggingface_hub
+          python -m pip install --upgrade pip
+          pip install huggingface_hub
 
       - name: Download Release Assets from GitHub
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p ./vault_assets
-          # Downloads all assets from your v1-books release
           gh release download v1-books --dir ./vault_assets --repo ${{ github.repository }}
 
       - name: Upload Assets to Hugging Face Dataset
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # Pushes the entire downloaded folder directly to your private dataset
-          huggingface-cli upload sahabul1064/mulberry-archives ./vault_assets . --repo-type=dataset --token "$HF_TOKEN"
+          python -c '
+          import os
+          from huggingface_hub import HfApi
+
+          token = os.environ.get("HF_TOKEN")
+          api = HfApi(token=token)
+
+          print("Starting upload to Hugging Face...")
+          api.upload_folder(
+              folder_path="./vault_assets",
+              repo_id="sahabul1064/mulberry-archives",
+              repo_type="dataset"
+          )
+          print("Upload completed successfully!")
+          '
